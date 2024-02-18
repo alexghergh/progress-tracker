@@ -11,6 +11,26 @@ class TaskTracker:
         """
         self.tasks = []
 
+    def create_and_add_task(self, task_name: str, currency_name: str) -> bool:
+        """
+        Create and add a task to the task tracker. Can fail if duplicates are
+        present.
+
+        Args:
+            task_name (str): Task name.
+            currency_name (str): Currency name.
+
+        Returns (bool): Whether the task was added.
+
+        """
+        if not isinstance(task_name, str):
+            raise ValueError("Task name must be string!")
+        if currency_name and not isinstance(currency_name, str):
+            raise ValueError("Currency name must be string!")
+        if currency_name:
+            return self.add_task(Task(task_name, currency_name))
+        return self.add_task(Task(task_name))
+
     def add_task(self, task: Task) -> bool:
         """
         Add a task to the task tracker. Can fail if duplicates are present.
@@ -18,7 +38,7 @@ class TaskTracker:
         Args:
             task (Task): Task to add.
 
-        Returns: Whether the task was added.
+        Returns (bool): Whether the task was added.
 
         """
         if not isinstance(task, Task):
