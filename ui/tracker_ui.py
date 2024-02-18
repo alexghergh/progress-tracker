@@ -1,5 +1,6 @@
 from PyQt5.QtWidgets import (
     QDialog,
+    QHBoxLayout,
     QInputDialog,
     QWidget,
     QPushButton,
@@ -8,6 +9,7 @@ from PyQt5.QtWidgets import (
 )
 
 from .add_task_ui import AddTaskUI
+from .graph_ui import GraphUI
 
 
 class TaskTrackerUI(QWidget):
@@ -25,23 +27,37 @@ class TaskTrackerUI(QWidget):
 
     def init_ui(self):
         # set window properties
-        self.setFixedSize(300, 300)
+        self.setFixedSize(700, 700)
         self.setWindowTitle("Progress tracker")
 
         # create task buttons
         self.add_button = QPushButton("Add task", self)
+        self.add_button.setFixedSize(200, 30)
         self.remove_button = QPushButton("Remove a task", self)
+        self.remove_button.setFixedSize(200, 30)
+
+        # create plot
+        self.plot_ui = GraphUI()
 
         # set the layout
+        hbox = QHBoxLayout()
+        hbox.addStretch()
+        hbox.addWidget(self.add_button)
+        hbox.addStretch()
+        hbox.addWidget(self.remove_button)
+        hbox.addStretch()
+
         vbox = QVBoxLayout()
-        vbox.addWidget(self.add_button)
-        vbox.addWidget(self.remove_button)
+        vbox.addWidget(self.plot_ui)
+        vbox.addLayout(hbox)
 
         self.setLayout(vbox)
 
         # connect buttons to actions
         self.add_button.clicked.connect(self.add_task_dialog)
         self.remove_button.clicked.connect(self.remove_task)
+
+        self.plot_ui.refresh_data(self.tracker.tasks)
         self.show()
 
     def add_task_dialog(self):
@@ -67,6 +83,9 @@ class TaskTrackerUI(QWidget):
 
             QMessageBox.information(self, "Success", f"Task \"{task_name}\" added!")
 
+        # refresh graph data
+        self.plot_ui.refresh_data(self.tracker.tasks)
+
     def remove_task(self):
         """
         Remove a task through the UI.
@@ -88,3 +107,6 @@ class TaskTrackerUI(QWidget):
                     QMessageBox.warning(self, "Warning", f"No such task \"{task_name}\"!")
             else:
                 return
+
+        # refresh graph data
+        self.plot_ui.refresh_data(self.tracker.tasks)
