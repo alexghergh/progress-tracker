@@ -36,6 +36,10 @@ class TaskTrackerUI(QWidget):
         self.remove_button = QPushButton("Remove a task", self)
         self.remove_button.setFixedSize(200, 30)
 
+        # make buttons clickable by pressing Enter
+        self.add_button.setAutoDefault(True)
+        self.remove_button.setAutoDefault(True)
+
         # create plot
         self.plot_ui = GraphUI()
 
@@ -65,7 +69,7 @@ class TaskTrackerUI(QWidget):
         Add a task through the UI.
 
         """
-        dialog = AddTaskUI(self)
+        dialog = AddTaskUI()
         result = dialog.exec_()
 
         if result == QDialog.Accepted:

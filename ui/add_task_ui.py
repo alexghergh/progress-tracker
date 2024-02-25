@@ -8,12 +8,12 @@ from PyQt5.QtWidgets import (
 
 
 class AddTaskUI(QDialog):
-    def __init__(self, parent):
+    def __init__(self):
         """
         Dialog window for adding a task.
 
         """
-        super().__init__(parent)
+        super().__init__()
 
         self.init_ui()
 

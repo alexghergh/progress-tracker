@@ -1,8 +1,11 @@
+from typing import List
+
 from PyQt5.QtWidgets import (
     QWidget,
     QVBoxLayout
 )
-import pyqtgraph as pg
+from app import Graph
+from app.task import Task
 
 
 class GraphUI(QWidget):
@@ -13,37 +16,41 @@ class GraphUI(QWidget):
         """
         super().__init__()
 
+        self.graph = Graph()
+
         self.init_ui()
 
     def init_ui(self):
-        # create plot
-        self.plot_widget = pg.PlotWidget(self)
 
-        # create widgets
+        # get system color theme
+        system_palette = self.palette()
+        figure_color = system_palette.window().color().getRgbF()
+        text_color = system_palette.text().color().getRgbF()
+        bar_color = system_palette.highlight().color().getRgbF()
+
+        # set graph colors
+        self.graph.set_color_scheme(figure_color=figure_color,
+                                    text_color=text_color,
+                                    bar_color=bar_color)
+
+        # get plot canvas
+        self.canvas = self.graph.get_canvas()
+
+        # create widgets and embed plot in PyQt
         vbox = QVBoxLayout()
-        vbox.addWidget(self.plot_widget)
+        vbox.addWidget(self.canvas)
 
         self.setLayout(vbox)
 
         self.show()
 
-    def refresh_data(self, tasks):
+    def refresh_data(self, tasks: List[Task]):
         """
         Refresh graph data.
 
+        Args:
+            tasks (List[Task]): List of tasks to update in the graph.
+
         """
-        self.plot_widget.clear()
-
-        task_names = [task.name for task in tasks]
-        task_currencies = [task.currency for task in tasks]
-
-        bar_chart = pg.BarGraphItem(x=range(len(task_names)),
-                                    height=task_currencies, width=0.6,
-                                    brush='b')
-        self.plot_widget.addItem(bar_chart)
-
-        # Set labels and title
-        self.plot_widget.getAxis('bottom').setTicks([[(i, name) for i, name in enumerate(task_names)]])
-        self.plot_widget.setLabel('left', 'Steps')
-        self.plot_widget.setLabel('bottom', 'Tasks')
-        self.plot_widget.setTitle('Task Tracker')
+        self.graph.update_graph(tasks)
+        self.canvas.draw()
