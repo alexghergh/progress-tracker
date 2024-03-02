@@ -21,7 +21,7 @@ class Graph:
         # bar graph settings
         self.bar_settings = {
             'alpha': 1.0,
-            'width': 0.5,
+            'height': 0.5,
             'color': None, # set later
         }
         self.hover_alpha_mouse_on = 1.0
@@ -35,7 +35,7 @@ class Graph:
         }
 
         # create mock bars for now, recreated on update
-        self.bars = self.ax.bar([], [], **self.bar_settings)
+        self.bars = self.ax.barh([], [], **self.bar_settings)
 
         # connect mplcursors to the figure
         self.fig.canvas.mpl_connect('motion_notify_event', self._on_motion)
@@ -74,6 +74,7 @@ class Graph:
 
         self.ax.tick_params(axis='x', colors=text_color)
         self.ax.tick_params(axis='y', colors=text_color)
+        self.text_color = text_color
 
         self.bar_settings['color'] = bar_color
 
@@ -134,12 +135,16 @@ class Graph:
         # list elemnts, joined at the end
         text = []
 
+        # add task title
+        text += [task.name + ' (' + task.currency_name + ')', '']
+
         # add sparkline history
         text += sparklines([hist['total_currency'] for hist in reversed(task.history)])
 
         # add relative timestamps
         text += ['', 'History:']
-        text += ['(' + str(hist['total_currency']) + ') ' + self.get_relative_time(hist['timestamp']) for hist in task.history]
+        text += ['(' + str(hist['total_currency']) + ') '
+            + self.get_relative_time(hist['timestamp']) for hist in task.history]
 
         return '\n'.join(text)
 
@@ -159,7 +164,7 @@ class Graph:
         task_currencies = [task.currency for task in tasks]
 
         # create the bars
-        self.bars = self.ax.bar(task_names, task_currencies, **self.bar_settings)
+        self.bars = self.ax.barh(task_names, task_currencies, **self.bar_settings)
 
         # add interactive cursor for the bars
         cursor = mplcursors.cursor(self.bars,
