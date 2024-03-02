@@ -1,8 +1,10 @@
 from typing import List, Tuple
+from datetime import datetime
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import matplotlib.pyplot as plt
 import mplcursors
+from sparklines import sparklines
 
 from app.task import Task
 
@@ -24,6 +26,13 @@ class Graph:
         }
         self.hover_alpha_mouse_on = 1.0
         self.hover_alpha_mouse_off = 0.3
+
+        # hover settings
+        self.hover_settings = {
+            'ec': 'black',
+            'fc': 'lightblue',
+            'boxstyle': 'round,pad=0.3'
+        }
 
         # create mock bars for now, recreated on update
         self.bars = self.ax.bar([], [], **self.bar_settings)
@@ -88,6 +97,52 @@ class Graph:
                 for bar in self.bars:
                     bar.set_alpha(self.hover_alpha_mouse_on)
 
+    def get_relative_time(self, timestamp):
+        now = datetime.now()
+        delta = now - datetime.fromisoformat(timestamp)
+
+        # calculate the difference in months, days, hours and minutes
+        days = delta.days
+        months, days = divmod(days, 30)
+        hours, remainder = divmod(delta.seconds, 3600)
+        minutes, _ = divmod(remainder, 60)
+
+        if months > 0:
+            if months == 1:
+                return '1 month ago'
+            else:
+                return f'{months} months ago'
+        elif days > 0:
+            if days == 1:
+                return '1 day ago'
+            else:
+                return f'{days} days ago'
+        elif hours > 0:
+            if hours == 1:
+                return '1 hour ago'
+            else:
+                return f'{hours} hours ago'
+        elif minutes > 0:
+            if minutes == 1:
+                return 'a minute ago'
+            else:
+                return f'{minutes} minutes ago'
+        else:
+            return 'just now'
+
+    def get_history_hover(self, task: Task):
+        # list elemnts, joined at the end
+        text = []
+
+        # add sparkline history
+        text += sparklines([hist['total_currency'] for hist in reversed(task.history)])
+
+        # add relative timestamps
+        text += ['', 'History:']
+        text += ['(' + str(hist['total_currency']) + ') ' + self.get_relative_time(hist['timestamp']) for hist in task.history]
+
+        return '\n'.join(text)
+
     def update_graph(self, tasks: List[Task]):
         """
         Update the graph details.
@@ -113,7 +168,8 @@ class Graph:
         # display task history on hover
         def on_add(sel):
             index = sel.index
-            sel.annotation.set_text(f'{tasks[index].history}')
+            sel.annotation.get_bbox_patch().set(**self.hover_settings)
+            sel.annotation.set_text(self.get_history_hover(tasks[index]))
 
         # connect hover tooltip
         cursor.connect('add', on_add)
