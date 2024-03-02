@@ -1,3 +1,4 @@
+from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import (
     QDialog,
     QHBoxLayout,
@@ -29,6 +30,7 @@ class TaskTrackerUI(QWidget):
         # set window properties
         self.setFixedSize(700, 700)
         self.setWindowTitle("Progress tracker")
+        self.setWindowIcon(QIcon('resources/images/tracker.png'))
 
         # create task buttons
         self.add_button = QPushButton("Add task", self)
