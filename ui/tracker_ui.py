@@ -3,7 +3,6 @@ from PyQt5.QtWidgets import (
     QAction,
     QDialog,
     QHBoxLayout,
-    QInputDialog,
     QMenu,
     QSystemTrayIcon,
     QWidget,
@@ -13,6 +12,7 @@ from PyQt5.QtWidgets import (
 )
 
 from .add_task_ui import AddTaskUI
+from .remove_task_ui import RemoveTaskUI
 from .increment_task_ui import IncrementTaskUI
 from .graph_ui import GraphUI
 
@@ -129,8 +129,15 @@ class TaskTrackerUI(QWidget):
         Remove a task through the UI.
 
         """
-        task_name, ok_pressed = QInputDialog.getText(self, "Remove task", "Task name")
-        if ok_pressed and task_name:
+        dialog = RemoveTaskUI(self.tracker.tasks)
+        result = dialog.exec_()
+
+        if result == QDialog.Accepted:
+            task_name = dialog.task_combobox.currentText()
+
+            if not task_name:
+                QMessageBox.warning(self, "Warning", "Name cannot be empty!")
+                return
 
             # ask for confirmation before removing the task
             reply = QMessageBox.question(self, "Confirmation",
