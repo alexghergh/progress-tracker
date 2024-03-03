@@ -1,5 +1,5 @@
 from typing import List, Tuple
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import matplotlib.pyplot as plt
@@ -22,7 +22,8 @@ class Graph:
         self.bar_settings = {
             'alpha': 1.0,
             'height': 0.5,
-            'color': None, # set later
+            'linewidth': 1.0,
+            'edgecolor': 'black',
         }
         self.hover_alpha_mouse_on = 1.0
         self.hover_alpha_mouse_off = 0.3
@@ -35,7 +36,10 @@ class Graph:
         }
 
         # create mock bars for now, recreated on update
-        self.bars = self.ax.barh([], [], **self.bar_settings)
+        self.bars = [self.ax.barh([], [], **self.bar_settings),
+                     self.ax.barh([], [], **self.bar_settings),
+                     self.ax.barh([], [], **self.bar_settings),
+                     self.ax.barh([], [], **self.bar_settings)]
 
         # connect mplcursors to the figure
         self.fig.canvas.mpl_connect('motion_notify_event', self._on_motion)
@@ -76,27 +80,31 @@ class Graph:
         self.ax.tick_params(axis='y', colors=text_color)
         self.text_color = text_color
 
-        self.bar_settings['color'] = bar_color
+        # bar colors should be different for each of the 4 periods
+        self.bar_color = [bar_color] * 4
+        for i in range(1, 4):
+            self.bar_color[i] = tuple(min(item + 0.1, 1.0) for item in self.bar_color[i - 1])
 
     # graph bar hover action
     def _on_motion(self, event):
         if event.xdata is not None and event.ydata is not None:
-            # reset alpha for all bars
-            for bar in self.bars:
-                bar.set_alpha(self.hover_alpha_mouse_off)
+            for i in range(len(self.bars)):
+                # reset alpha for all bars
+                for bar in self.bars[i]:
+                    bar.set_alpha(self.hover_alpha_mouse_off)
 
-            hovering = False
-            # highlight the bar under the cursor (if any)
-            for bar in self.bars:
-                if bar.contains(event)[0]:
-                    hovering = True
-                    bar.set_alpha(self.hover_alpha_mouse_on)
-                    break
+                hovering = False
+                # highlight the bar under the cursor (if any)
+                for bar in self.bars[i]:
+                    if bar.contains(event)[0]:
+                        hovering = True
+                        bar.set_alpha(self.hover_alpha_mouse_on)
+                        break
 
-            # reset alpha for all bars, if no bar hovered
-            if hovering is False:
-                for bar in self.bars:
-                    bar.set_alpha(self.hover_alpha_mouse_on)
+                # reset alpha for all bars, if no bar hovered
+                if hovering is False:
+                    for bar in self.bars[i]:
+                        bar.set_alpha(self.hover_alpha_mouse_on)
 
     def get_relative_time(self, timestamp):
         now = datetime.now()
@@ -148,6 +156,40 @@ class Graph:
 
         return '\n'.join(text)
 
+    def get_months(self, tasks: List[Task]):
+        # split tasks into periods, to plot with different colors
+        current_date = datetime.now()
+
+        three = []
+        six = []
+        nine = []
+        older = []
+        for task in tasks:
+            # calculate the date thresholds
+            three_months_ago = current_date - timedelta(days=90)
+            six_months_ago = current_date - timedelta(days=180)
+            nine_months_ago = current_date - timedelta(days=270)
+
+            # split the list based on date criteria
+            last_three_months = [item for item in task.history if datetime.fromisoformat(item["timestamp"]) >= three_months_ago]
+            last_six_months = [item for item in task.history if six_months_ago <= datetime.fromisoformat(item["timestamp"]) < three_months_ago]
+            last_nine_months = [item for item in task.history if nine_months_ago <= datetime.fromisoformat(item["timestamp"]) < six_months_ago]
+            older_than_nine_months = [item for item in task.history if datetime.fromisoformat(item["timestamp"]) < nine_months_ago]
+
+
+            # extract the first item's currency or set it to 0 if the list is empty
+            last_three_months = last_three_months[0]["total_currency"] if last_three_months else 0
+            last_six_months = last_six_months[0]["total_currency"] if last_six_months else 0
+            last_nine_months = last_nine_months[0]["total_currency"] if last_nine_months else 0
+            older_than_nine_months = older_than_nine_months[0]["total_currency"] if older_than_nine_months else 0
+
+            three.append(last_three_months)
+            six.append(last_six_months)
+            nine.append(last_nine_months)
+            older.append(older_than_nine_months)
+
+        return three, six, nine, older
+
     def update_graph(self, tasks: List[Task]):
         """
         Update the graph details.
@@ -159,22 +201,34 @@ class Graph:
         # clear ax
         self.ax.cla()
 
-        # get tasks
+        # get task names
         task_names = [task.name for task in tasks]
-        task_currencies = [task.currency for task in tasks]
+        task_months = self.get_months(tasks)
 
-        # create the bars
-        self.bars = self.ax.barh(task_names, task_currencies, **self.bar_settings)
+        labels = ["progress older than 9 months",
+                  "progress last 9 months",
+                  "progress last 6 months",
+                  "progress last 3 months"]
 
-        # add interactive cursor for the bars
-        cursor = mplcursors.cursor(self.bars,
-                                   hover=mplcursors.HoverMode.Transient)
+        left = [0] * len(task_names)
+        for i, months in enumerate(reversed(task_months)):
+            # create the bars
+            self.bars[i] = self.ax.barh(task_names, months, **self.bar_settings,
+                                        label=labels[i],
+                                        color=self.bar_color[i], left=left)
+            left = [a + b for a, b in zip(left, months)]
 
-        # display task history on hover
-        def on_add(sel):
-            index = sel.index
-            sel.annotation.get_bbox_patch().set(**self.hover_settings)
-            sel.annotation.set_text(self.get_history_hover(tasks[index]))
+            # add interactive cursor for the bars
+            cursor = mplcursors.cursor(self.bars[i],
+                                       hover=mplcursors.HoverMode.Transient)
 
-        # connect hover tooltip
-        cursor.connect('add', on_add)
+            # display task history on hover
+            def on_add(sel):
+                index = sel.index
+                sel.annotation.get_bbox_patch().set(**self.hover_settings)
+                sel.annotation.set_text(self.get_history_hover(tasks[index]))
+
+            # connect hover tooltip
+            cursor.connect('add', on_add)
+
+        self.ax.legend(loc='upper right')

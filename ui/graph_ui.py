@@ -4,6 +4,7 @@ from PyQt5.QtWidgets import (
     QWidget,
     QVBoxLayout
 )
+
 from app import Graph
 from app.task import Task
 
