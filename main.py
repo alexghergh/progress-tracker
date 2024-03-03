@@ -40,7 +40,7 @@ def main():
     tracker = TaskTracker.import_from_json(save_file)
 
     # construct the main view
-    tracker_app = TaskTrackerUI(tracker)
+    tracker_app = TaskTrackerUI(tracker, app)
 
     app.aboutToQuit.connect(partial(tracker.export_to_json, save_file))
 

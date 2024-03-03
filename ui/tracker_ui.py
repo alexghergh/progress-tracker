@@ -1,8 +1,11 @@
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import (
+    QAction,
     QDialog,
     QHBoxLayout,
     QInputDialog,
+    QMenu,
+    QSystemTrayIcon,
     QWidget,
     QPushButton,
     QVBoxLayout,
@@ -15,7 +18,7 @@ from .graph_ui import GraphUI
 
 
 class TaskTrackerUI(QWidget):
-    def __init__(self, tracker):
+    def __init__(self, tracker, app):
         """
         Main Tracker UI interface.
 
@@ -25,13 +28,29 @@ class TaskTrackerUI(QWidget):
         # task tracker
         self.tracker = tracker
 
+        self.app = app
+
         self.init_ui()
 
     def init_ui(self):
         # set window properties
+        app_icon = QIcon('resources/images/tracker.png')
         self.setFixedSize(1400, 900)
         self.setWindowTitle("Progress tracker")
-        self.setWindowIcon(QIcon('resources/images/tracker.png'))
+        self.setWindowIcon(app_icon)
+
+        # create system tray icon
+        self.tray_icon = QSystemTrayIcon(self)
+        self.tray_icon.setIcon(app_icon)
+
+        # create context menu for tray icon
+        tray_menu = QMenu(self)
+        exit_action = QAction('Exit', self)
+
+        tray_menu.addAction(exit_action)
+
+        self.tray_icon.setContextMenu(tray_menu)
+        self.tray_icon.hide()
 
         # create task buttons
         self.add_button = QPushButton("Add task", self)
@@ -69,6 +88,12 @@ class TaskTrackerUI(QWidget):
         self.add_button.clicked.connect(self.add_task_dialog)
         self.remove_button.clicked.connect(self.remove_task)
         self.increment_button.clicked.connect(self.update_task_dialog)
+
+        exit_action.triggered.connect(self.app.quit)
+        self.tray_icon.activated.connect(self.tray_icon_activated)
+
+        # handle window close event (minimize to tray)
+        self.closeEvent = self.on_close_event
 
         self.plot_ui.refresh_data(self.tracker.tasks)
         self.show()
@@ -162,3 +187,21 @@ class TaskTrackerUI(QWidget):
 
         # refresh graph data
         self.plot_ui.refresh_data(self.tracker.tasks)
+
+    def tray_icon_activated(self, reason):
+        # restore app from system tray icon
+        if reason == QSystemTrayIcon.Trigger:
+            self.tray_icon.hide()
+            self.show()
+
+    def on_close_event(self, event):
+        # minimize to tray when closing window
+        event.ignore()
+        self.hide()
+        self.tray_icon.show()
+        self.tray_icon.showMessage(
+            "Progress tracker",
+            "Application minimized to tray",
+            QSystemTrayIcon.NoIcon,
+            2000, # 2 seconds
+        )
